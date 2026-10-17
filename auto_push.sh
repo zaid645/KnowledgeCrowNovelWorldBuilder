@@ -38,12 +38,56 @@ run_git_process() {
         exit 1
     fi
 
-    echo "🚀 Melakukan push ke origin/$current_branch..."
+    target_branch="$current_branch"
+
+    echo ""
+    echo "📌 Branch aktif saat ini: $current_branch"
+    echo -n "👉 Tekan [Enter] untuk push ke '$current_branch', atau ketik 'branch' untuk memilih branch lain: "
+    read choice
+
+    # Jika pengguna memilih untuk melihat opsi branch
+    if [ "$choice" == "branch" ] || [ "$choice" == "BRANCH" ]; then
+        echo ""
+        echo "📋 Daftar branch lokal yang tersedia:"
+        echo "------------------------------------------------"
+        
+        # Mengambil daftar branch ke dalam array
+        branches=()
+        while IFS= read -r line; do
+            [ -n "$line" ] && branches+=("$line")
+        done < <(git branch --format='%(refname:short)')
+
+        # Menampilkan opsi bernomor
+        for i in "${!branches[@]}"; do
+            b_name="${branches[$i]}"
+            if [ "$b_name" == "$current_branch" ]; then
+                echo "  $((i+1)). $b_name (aktif saat ini)"
+            else
+                echo "  $((i+1)). $b_name"
+            fi
+        done
+        echo "------------------------------------------------"
+
+        # Validasi input nomor dari pengguna
+        while true; do
+            echo -n "Masukkan nomor branch yang ingin di-push (1-${#branches[@]}): "
+            read b_num
+            if [[ "$b_num" =~ ^[0-9]+$ ]] && [ "$b_num" -ge 1 ] && [ "$b_num" -le "${#branches[@]}" ]; then
+                target_branch="${branches[$((b_num-1))]}"
+                break
+            else
+                echo "⚠️  Pilihan tidak valid. Silakan masukkan nomor antara 1 dan ${#branches[@]}."
+            fi
+        done
+    fi
+
+    echo ""
+    echo "🚀 Melakukan push ke origin/$target_branch..."
     
     # Mengecek apakah perintah push berhasil atau gagal
-    if git push origin "$current_branch"; then
+    if git push origin "$target_branch"; then
         echo "------------------------------------------------"
-        echo "✅ Selesai! Proses push berhasil."
+        echo "✅ Selesai! Proses push ke origin/$target_branch berhasil."
     else
         echo "------------------------------------------------"
         echo "❌ Gagal! Terjadi kesalahan saat melakukan push (cek log di atas)."
